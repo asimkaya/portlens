@@ -37,6 +37,8 @@ pub fn show(app: &AppHandle) {
     place(app, &window);
     *app.state::<State>().last_shown.lock().unwrap() = Some(Instant::now());
     let _ = window.show();
+    // Showing applies pending size changes, so settle the position once more.
+    place(app, &window);
     let _ = window.set_focus();
     let _ = app.emit("window-visible", true);
 }
@@ -105,12 +107,18 @@ fn place(app: &AppHandle, window: &WebviewWindow) {
     let area = monitor.work_area();
     let margin = (MARGIN * scale).round() as i32;
 
-    let width = (WIDTH * scale).round() as i32;
-    let height = ((HEIGHT * scale).round() as i32).min(area.size.height as i32 - 2 * margin);
+    let width = (WIDTH * scale).round() as u32;
+    let height = ((HEIGHT * scale).round() as i32).min(area.size.height as i32 - 2 * margin) as u32;
+    let _ = window.set_size(PhysicalSize::new(width, height));
 
-    let _ = window.set_size(PhysicalSize::new(width as u32, height as u32));
+    // Anchor on the size the window really has. Right after creation it can
+    // differ from the one just requested, which left the first opening
+    // hanging below the taskbar.
+    let actual = window
+        .outer_size()
+        .unwrap_or(PhysicalSize::new(width, height));
     let _ = window.set_position(PhysicalPosition::new(
-        area.position.x + area.size.width as i32 - width - margin,
-        area.position.y + area.size.height as i32 - height - margin,
+        area.position.x + area.size.width as i32 - actual.width as i32 - margin,
+        area.position.y + area.size.height as i32 - actual.height as i32 - margin,
     ));
 }
