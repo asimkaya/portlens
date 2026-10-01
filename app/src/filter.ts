@@ -16,13 +16,6 @@ export const defaultFilters: Filters = {
   showSystem: false,
 };
 
-export type SortKey = "port" | "process" | "pid";
-
-export interface Sort {
-  key: SortKey;
-  direction: "asc" | "desc";
-}
-
 function haystack(row: Row): string {
   const { process } = row;
   return [
@@ -72,21 +65,6 @@ export function countHiddenSystem(rows: Row[], filters: Filters): number {
   return rows.filter((row) => row.process.is_system && matchesExceptSystem(row, filters)).length;
 }
 
-export function sortRows(rows: Row[], { key, direction }: Sort): Row[] {
-  const sign = direction === "asc" ? 1 : -1;
-  const byPort = (a: Row, b: Row) => a.port - b.port || a.protocol.localeCompare(b.protocol);
-
-  return [...rows].sort((a, b) => {
-    switch (key) {
-      case "process":
-        return (
-          sign * a.process.name.localeCompare(b.process.name, undefined, { sensitivity: "base" }) ||
-          byPort(a, b)
-        );
-      case "pid":
-        return sign * (a.process.pid - b.process.pid) || byPort(a, b);
-      case "port":
-        return sign * (a.port - b.port) || a.protocol.localeCompare(b.protocol);
-    }
-  });
+export function sortRows(rows: Row[]): Row[] {
+  return [...rows].sort((a, b) => a.port - b.port || a.protocol.localeCompare(b.protocol));
 }

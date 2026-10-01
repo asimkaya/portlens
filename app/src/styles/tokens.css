@@ -23,6 +23,9 @@
   --buoy-soft: #ffeecb;
   --buoy-ink: #84500a;
 
+  --live: #2fbf71;
+  --live-ink: #17804a;
+
   --signal: #c93a31;
   --signal-fill: #d4443b;
   --signal-soft: #fde5e2;
@@ -62,6 +65,9 @@
     --buoy: #ffb547;
     --buoy-soft: #3b2e12;
     --buoy-ink: #ffc96e;
+
+    --live: #3fd484;
+    --live-ink: #6fe3a3;
 
     --signal: #ff8077;
     --signal-fill: #d4443b;

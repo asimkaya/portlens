@@ -149,5 +149,8 @@ export const mockApi: Api = {
   isElevated: () => delay(false),
   restartAsAdmin: () => Promise.reject("Administrator permission was not granted."),
   openInBrowser: () => Promise.resolve(),
+  hideWindow: () => Promise.resolve(),
+  setPinned: () => Promise.resolve(),
   onWindowVisible: () => Promise.resolve(() => {}),
+  onSelectPort: () => Promise.resolve(() => {}),
 };

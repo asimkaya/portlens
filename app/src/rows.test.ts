@@ -110,8 +110,7 @@ describe("filters", () => {
 
 describe("sortRows", () => {
   it("sorts by port, then protocol", () => {
-    const rows = toRows(snapshot);
-    const sorted = sortRows(rows, { key: "port", direction: "desc" });
-    expect(sorted[0].port).toBe(51000);
+    const sorted = sortRows(toRows(snapshot));
+    expect(sorted.map((r) => r.port)).toEqual([135, 3000, 8080, 51000]);
   });
 });

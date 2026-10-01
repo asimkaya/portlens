@@ -1,52 +1,42 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, messageOf } from "./api";
-import { DetailPanel } from "./components/DetailPanel";
-import { FilterBar } from "./components/FilterBar";
+import { api, messageOf, type PortSelection } from "./api";
+import { DetailView } from "./components/DetailView";
+import { FilterChips } from "./components/FilterChips";
+import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
-import { PortTable } from "./components/PortTable";
-import { StatusBar } from "./components/StatusBar";
+import { PortList } from "./components/PortList";
 import { StopDialog } from "./components/StopDialog";
 import { Toasts, type Toast } from "./components/Toasts";
-import {
-  applyFilters,
-  countHiddenSystem,
-  defaultFilters,
-  sortRows,
-  type Filters,
-  type Sort,
-  type SortKey,
-} from "./filter";
+import { applyFilters, countHiddenSystem, defaultFilters, sortRows, type Filters } from "./filter";
 import type { Row } from "./rows";
 import { useSnapshot } from "./useSnapshot";
 
+/** How long a port picked in the tray menu waits for the list to catch up. */
+const SELECTION_PATIENCE_MS = 4000;
+
 function isTyping(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLElement && target.matches("input, textarea, select, [contenteditable]")
-  );
+  return target instanceof HTMLElement && target.matches("input, textarea, select");
 }
 
 export default function App() {
   const [filters, setFilters] = useState<Filters>(defaultFilters);
-  const [sort, setSort] = useState<Sort>({ key: "port", direction: "asc" });
   const [paused, setPaused] = useState(false);
+  const [pinned, setPinned] = useState(false);
   const [windowVisible, setWindowVisible] = useState(true);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [pendingSelection, setPendingSelection] = useState<PortSelection | null>(null);
   const [stopping, setStopping] = useState<Row | null>(null);
   const [stopBusy, setStopBusy] = useState(false);
   const [elevated, setElevated] = useState<boolean | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const searchRef = useRef<HTMLInputElement>(null);
-  const focusSelection = useRef(false);
   const nextToastId = useRef(0);
 
-  // Nothing needs updating while the window sits in the tray.
+  // Nothing needs updating while the window is tucked away in the tray.
   const { rows, fresh, leaving, error, loaded, refresh } = useSnapshot(!paused && windowVisible);
 
-  const shownRows = useMemo(
-    () => sortRows(applyFilters(rows, filters), sort),
-    [rows, filters, sort],
-  );
+  const shownRows = useMemo(() => sortRows(applyFilters(rows, filters)), [rows, filters]);
   const hiddenSystem = useMemo(() => countHiddenSystem(rows, filters), [rows, filters]);
   const selected = useMemo(
     () => rows.find((row) => row.key === selectedKey && !leaving.has(row.key)) ?? null,
@@ -64,28 +54,49 @@ export default function App() {
 
   useEffect(() => {
     api.isElevated().then(setElevated, () => setElevated(null));
-    const unlisten = api.onWindowVisible(setWindowVisible);
-    return () => void unlisten.then((stop) => stop());
+    const unlistenVisible = api.onWindowVisible(setWindowVisible);
+    const unlistenSelect = api.onSelectPort((selection) => {
+      // Make sure the filters cannot hide the port that was just asked for.
+      setFilters(defaultFilters);
+      setPendingSelection(selection);
+    });
+    return () => {
+      void unlistenVisible.then((stop) => stop());
+      void unlistenSelect.then((stop) => stop());
+    };
   }, []);
 
-  // A process that exited takes its details panel with it.
+  // The tray menu can name a port the list has not loaded yet, so keep the
+  // request until the matching row shows up.
+  useEffect(() => {
+    if (!pendingSelection) return;
+    const match = rows.find(
+      (row) =>
+        row.listening &&
+        !leaving.has(row.key) &&
+        row.port === pendingSelection.port &&
+        row.protocol === pendingSelection.protocol &&
+        row.process.pid === pendingSelection.pid,
+    );
+    if (match) {
+      setSelectedKey(match.key);
+      setPendingSelection(null);
+      return;
+    }
+    const giveUp = setTimeout(() => setPendingSelection(null), SELECTION_PATIENCE_MS);
+    return () => clearTimeout(giveUp);
+  }, [pendingSelection, rows, leaving]);
+
+  // A process that exited takes its details with it.
   useEffect(() => {
     if (selectedKey && loaded && !selected) setSelectedKey(null);
   }, [selectedKey, selected, loaded]);
 
-  useEffect(() => {
-    if (!selectedKey) return;
-    const element = document.querySelector<HTMLElement>(`[data-key="${CSS.escape(selectedKey)}"]`);
-    element?.scrollIntoView({ block: "nearest" });
-    if (focusSelection.current) element?.focus({ preventScroll: true });
-    focusSelection.current = false;
-  }, [selectedKey]);
-
-  const select = useCallback((row: Row | null) => setSelectedKey(row?.key ?? null), []);
-
   const requestStop = useCallback((row: Row) => {
     if (row.process.protection !== "locked" && row.process.pid !== 0) setStopping(row);
   }, []);
+
+  const hideWindow = useCallback(() => void api.hideWindow(), []);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -94,33 +105,31 @@ export default function App() {
       const typing = isTyping(event.target);
       const search = searchRef.current;
 
-      if ((event.key === "/" && !typing) || (event.key === "f" && event.ctrlKey)) {
+      if ((event.key === "/" && !typing && !selectedKey) || (event.key === "f" && event.ctrlKey)) {
         event.preventDefault();
-        search?.focus();
-        search?.select();
+        setSelectedKey(null);
+        // The input only exists in the list view, so wait for it to render.
+        requestAnimationFrame(() => {
+          searchRef.current?.focus();
+          searchRef.current?.select();
+        });
         return;
       }
 
       if (event.key === "Escape") {
-        if (typing && event.target === search) {
-          if (filters.query) setFilters((f) => ({ ...f, query: "" }));
-          else search?.blur();
+        if (typing && event.target === search && filters.query) {
+          setFilters((f) => ({ ...f, query: "" }));
         } else if (selectedKey) {
           setSelectedKey(null);
+        } else {
+          hideWindow();
         }
         return;
       }
 
-      const arrow = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
-      const fromSearch = event.target === search && arrow === 1;
-      if (arrow && (!typing || fromSearch)) {
+      if (event.key === "ArrowDown" && event.target === search) {
         event.preventDefault();
-        const current = shownRows.findIndex((row) => row.key === selectedKey);
-        const next = shownRows[Math.min(Math.max(current + arrow, 0), shownRows.length - 1)];
-        if (next) {
-          focusSelection.current = true;
-          setSelectedKey(next.key);
-        }
+        document.querySelector<HTMLElement>(".row-main")?.focus();
         return;
       }
 
@@ -132,14 +141,12 @@ export default function App() {
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [stopping, filters.query, selectedKey, selected, shownRows, requestStop]);
+  }, [stopping, filters.query, selectedKey, selected, requestStop, hideWindow]);
 
-  function toggleSort(key: SortKey) {
-    setSort((current) =>
-      current.key === key
-        ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
-        : { key, direction: "asc" },
-    );
+  function togglePin() {
+    const next = !pinned;
+    setPinned(next);
+    void api.setPinned(next);
   }
 
   async function confirmStop(tree: boolean) {
@@ -184,81 +191,81 @@ export default function App() {
         query={filters.query}
         onQuery={(query) => setFilters((f) => ({ ...f, query }))}
         searchRef={searchRef}
+        showSearch={!selected}
         paused={paused}
         onTogglePause={() => setPaused((p) => !p)}
+        pinned={pinned}
+        onTogglePin={togglePin}
+        onClose={hideWindow}
       />
-      <FilterBar filters={filters} onChange={setFilters} hiddenSystem={hiddenSystem} />
 
-      <main className={selected ? "main has-detail" : "main"}>
-        <section className="list" aria-label="Ports">
-          {error && (
-            <p className="banner" role="alert">
-              Could not read the port list: {error}
-            </p>
-          )}
+      {selected ? (
+        <DetailView
+          key={selected.key}
+          row={selected}
+          onBack={() => setSelectedKey(null)}
+          onStop={requestStop}
+          onOpenInBrowser={openInBrowser}
+        />
+      ) : (
+        <>
+          <FilterChips filters={filters} onChange={setFilters} hiddenSystem={hiddenSystem} />
 
-          {!loaded && !error && <p className="empty">Reading your ports…</p>}
+          <main className="list-area" aria-label="Ports">
+            {error && (
+              <p className="banner" role="alert">
+                Could not read the port list: {error}
+              </p>
+            )}
 
-          {loaded && shownRows.length === 0 && (
-            <div className="empty">
-              {filters.query ? (
-                <>
-                  <p className="empty-title">No ports match “{filters.query}”</p>
-                  <p>
-                    Search looks at ports, process names, PIDs, paths and Windows service names.
-                  </p>
-                  <button
-                    type="button"
-                    className="button"
-                    onClick={() => setFilters((f) => ({ ...f, query: "" }))}
-                  >
-                    Clear search
-                  </button>
-                </>
-              ) : hiddenSystem > 0 ? (
-                <>
-                  <p className="empty-title">Nothing from your own programs is listening</p>
-                  <p>{hiddenSystem} ports that belong to Windows are hidden.</p>
-                  <button
-                    type="button"
-                    className="button"
-                    onClick={() => setFilters((f) => ({ ...f, showSystem: true }))}
-                  >
-                    Show Windows processes
-                  </button>
-                </>
-              ) : (
-                <p className="empty-title">No ports match these filters</p>
-              )}
-            </div>
-          )}
+            {!loaded && !error && <p className="empty">Reading your ports…</p>}
 
-          {shownRows.length > 0 && (
-            <PortTable
-              rows={shownRows}
-              selectedKey={selectedKey}
-              fresh={fresh}
-              leaving={leaving}
-              sort={sort}
-              onSort={toggleSort}
-              onSelect={select}
-              onStop={requestStop}
-            />
-          )}
-        </section>
+            {loaded && shownRows.length === 0 && (
+              <div className="empty">
+                {filters.query ? (
+                  <>
+                    <p className="empty-title">No ports match “{filters.query}”</p>
+                    <p>Search covers ports, programs, PIDs, paths and Windows service names.</p>
+                    <button
+                      type="button"
+                      className="button"
+                      onClick={() => setFilters((f) => ({ ...f, query: "" }))}
+                    >
+                      Clear search
+                    </button>
+                  </>
+                ) : hiddenSystem > 0 ? (
+                  <>
+                    <p className="empty-title">None of your programs are listening</p>
+                    <p>{hiddenSystem} ports that belong to Windows are hidden.</p>
+                    <button
+                      type="button"
+                      className="button"
+                      onClick={() => setFilters((f) => ({ ...f, showSystem: true }))}
+                    >
+                      Show Windows ports
+                    </button>
+                  </>
+                ) : (
+                  <p className="empty-title">No ports match these filters</p>
+                )}
+              </div>
+            )}
 
-        {selected && (
-          <DetailPanel
-            key={selected.key}
-            row={selected}
-            onClose={() => select(null)}
-            onStop={requestStop}
-            onOpenInBrowser={openInBrowser}
-          />
-        )}
-      </main>
+            {shownRows.length > 0 && (
+              <PortList
+                rows={shownRows}
+                fresh={fresh}
+                leaving={leaving}
+                onSelect={(row) => setSelectedKey(row.key)}
+                onStop={requestStop}
+              />
+            )}
+          </main>
+        </>
+      )}
 
-      <StatusBar
+      <Footer
         shown={shownRows.filter((row) => !leaving.has(row.key)).length}
         elevated={elevated}
         onRestartAsAdmin={restartAsAdmin}
