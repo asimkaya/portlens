@@ -63,6 +63,7 @@ fn pid_to_wait_for() -> Option<u32> {
 
 pub fn run() {
     if let Some(pid) = pid_to_wait_for() {
+        portlens_core::detach_console();
         portlens_core::wait_for_exit(pid, 5_000);
     }
 

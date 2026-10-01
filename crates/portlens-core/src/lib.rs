@@ -13,7 +13,7 @@ mod sockets;
 
 use std::collections::BTreeSet;
 
-pub use elevation::{is_elevated, relaunch_as_admin, wait_for_exit};
+pub use elevation::{detach_console, is_elevated, relaunch_as_admin, wait_for_exit};
 pub use error::{Error, Result};
 pub use model::{ProcessInfo, Protection, Protocol, Snapshot, Socket, TcpState};
 

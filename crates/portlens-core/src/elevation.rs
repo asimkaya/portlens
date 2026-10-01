@@ -4,6 +4,7 @@ use std::os::windows::ffi::OsStrExt;
 
 use windows::Win32::Foundation::HANDLE;
 use windows::Win32::Security::{GetTokenInformation, TOKEN_ELEVATION, TOKEN_QUERY, TokenElevation};
+use windows::Win32::System::Console::FreeConsole;
 use windows::Win32::System::Threading::{
     GetCurrentProcess, OpenProcess, OpenProcessToken, PROCESS_SYNCHRONIZE, WaitForSingleObject,
 };
@@ -71,5 +72,16 @@ pub fn wait_for_exit(pid: u32, timeout_ms: u32) {
         };
         let handle = Owned::new(handle);
         WaitForSingleObject(*handle, timeout_ms);
+    }
+}
+
+/// Lets go of the console this process was started with, if it has one.
+///
+/// Debug builds are console programs. When one relaunches itself elevated,
+/// Windows opens a fresh console for the copy, and closing that console would
+/// kill the app. Release builds have no console, so this does nothing there.
+pub fn detach_console() {
+    unsafe {
+        let _ = FreeConsole();
     }
 }
