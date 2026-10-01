@@ -1,0 +1,33 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what you got instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Portlens version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: "Windows 11 23H2"
+  - type: dropdown
+    id: elevated
+    attributes:
+      label: Running as administrator?
+      options: ["No", "Yes", "Not sure"]
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, the process involved, or the output of `portlens list --json`.

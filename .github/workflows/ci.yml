@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install front end dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Check Rust formatting
+        run: cargo fmt --all --check
+
+      - name: Check front end formatting
+        working-directory: app
+        run: npx prettier --check src
+
+      # The Tauri build script needs the built front end to exist.
+      - name: Build front end
+        working-directory: app
+        run: npm run build
+
+      - name: Test front end
+        working-directory: app
+        run: npm test
+
+      - name: Lint Rust
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test Rust
+        run: cargo test --workspace
