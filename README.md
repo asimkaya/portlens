@@ -4,10 +4,14 @@ See which program is using a port on Windows, and stop it.
 
 Portlens lists every TCP and UDP socket on your machine together with the process that owns it. Search by port, process name, PID or path, and stop the process behind a port when something is in your way. It is the usual `EADDRINUSE` fix without piecing together `netstat`, `findstr` and `taskkill`.
 
-![Portlens showing listening ports in the dark theme](docs/screenshot.png)
+<p>
+  <img src="docs/screenshot-list.png" alt="The Portlens flyout listing open ports" width="360">
+  <img src="docs/screenshot-detail.png" alt="Details for one port, with the stop button" width="360">
+</p>
 
 ## Features
 
+- Lives in the system tray. Click the icon for a compact panel in the corner of the screen. Right-click it for a menu of the ports your own programs have open; pick one to jump straight to its details.
 - Live list of listening ports and active connections, refreshed every two seconds.
 - Search across port, process name, PID, executable path and Windows service names. Type `:80` to match port 80 exactly and not 8080.
 - Windows' own ports are hidden by default, so the list shows your programs. One switch brings them back.
@@ -15,11 +19,12 @@ Portlens lists every TCP and UDP socket on your machine together with the proces
 - Ports are marked when other devices on the network can reach them, as opposed to loopback only.
 - Details for each port: full path, command line, start time, parent process, hosted Windows services.
 - Stops a process, optionally with the programs it started. Critical Windows processes cannot be stopped, and other Windows components ask for a second look first.
-- Lives in the system tray. Closing the window hides it; use the tray menu to quit.
 - Follows the system light or dark theme.
 - A `portlens` command line tool built on the same core.
 
-Keyboard: `/` or `Ctrl+F` to search, `↑` `↓` to move, `Delete` to stop, `Esc` to close the details.
+The panel closes when you click elsewhere. The pin button keeps it open.
+
+Keyboard: `/` or `Ctrl+F` to search, `↑` `↓` to move, `Enter` to open a port, `Delete` to stop it, `Esc` to go back and then to hide the panel.
 
 ## Install
 

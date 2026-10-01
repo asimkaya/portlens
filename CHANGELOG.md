@@ -4,6 +4,15 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+
+- Portlens now lives in the tray only. Left click opens a compact panel in the corner of the screen that closes when it loses focus; right click lists the ports your own programs have open.
+- The details view is a full page of the panel instead of a side column.
+- The "Live" indicator is green.
+- The browser context menu and shortcuts such as reload and print are disabled.
+
+## [0.1.0]
+
 ### Added
 
 - Live list of TCP and UDP sockets with their owning processes.
