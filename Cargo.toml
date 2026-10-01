@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = ["crates/portlens-core", "crates/portlens-cli", "app/src-tauri"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+repository = "https://github.com/asimkaya/portlens"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
