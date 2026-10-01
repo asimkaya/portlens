@@ -1,10 +1,11 @@
+mod flyout;
+mod tray;
+
 use portlens_core::{Snapshot, kill};
-use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
-use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Emitter, Manager, WindowEvent};
+use tauri::{AppHandle, Manager, WindowEvent};
 use tauri_plugin_opener::OpenerExt;
 
-const MAIN_WINDOW: &str = "main";
+const AFTER_PID_FLAG: &str = "--after-pid";
 
 #[tauri::command(async)]
 fn snapshot() -> Result<Snapshot, String> {
@@ -40,7 +41,15 @@ fn open_in_browser(app: AppHandle, port: u16) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
-const AFTER_PID_FLAG: &str = "--after-pid";
+#[tauri::command]
+fn hide_window(app: AppHandle) {
+    flyout::hide(&app);
+}
+
+#[tauri::command]
+fn set_pinned(app: AppHandle, pinned: bool) {
+    flyout::set_pinned(&app, pinned);
+}
 
 fn pid_to_wait_for() -> Option<u32> {
     let mut args = std::env::args().skip(1);
@@ -52,53 +61,6 @@ fn pid_to_wait_for() -> Option<u32> {
     None
 }
 
-fn show_window(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
-        let _ = window.unminimize();
-        let _ = window.show();
-        let _ = window.set_focus();
-        let _ = app.emit("window-visible", true);
-    }
-}
-
-fn hide_window(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
-        let _ = window.hide();
-        let _ = app.emit("window-visible", false);
-    }
-}
-
-fn build_tray(app: &AppHandle) -> tauri::Result<()> {
-    let open = MenuItem::with_id(app, "open", "Open Portlens", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open, &PredefinedMenuItem::separator(app)?, &quit])?;
-
-    let mut tray = TrayIconBuilder::new()
-        .tooltip("Portlens")
-        .menu(&menu)
-        .show_menu_on_left_click(false)
-        .on_menu_event(|app, event| match event.id.as_ref() {
-            "open" => show_window(app),
-            "quit" => app.exit(0),
-            _ => {}
-        })
-        .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click {
-                button: MouseButton::Left,
-                button_state: MouseButtonState::Up,
-                ..
-            } = event
-            {
-                show_window(tray.app_handle());
-            }
-        });
-    if let Some(icon) = app.default_window_icon() {
-        tray = tray.icon(icon.clone());
-    }
-    tray.build(app)?;
-    Ok(())
-}
-
 pub fn run() {
     if let Some(pid) = pid_to_wait_for() {
         portlens_core::wait_for_exit(pid, 5_000);
@@ -106,9 +68,8 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
-            show_window(app)
+            flyout::show(app)
         }))
-        .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             snapshot,
@@ -116,17 +77,24 @@ pub fn run() {
             is_elevated,
             restart_as_admin,
             open_in_browser,
+            hide_window,
+            set_pinned,
         ])
         .setup(|app| {
-            build_tray(app.handle())?;
+            app.manage(flyout::State::default());
+            tray::build(app.handle())?;
+            // Whoever launched Portlens expects to see something happen.
+            flyout::show(app.handle());
             Ok(())
         })
-        .on_window_event(|window, event| {
-            // The window closes to the tray; "Quit" in the tray menu exits.
-            if let WindowEvent::CloseRequested { api, .. } = event {
+        .on_window_event(|window, event| match event {
+            WindowEvent::Focused(false) => flyout::on_blur(window.app_handle()),
+            // Alt+F4 closes the flyout, not the app. "Quit" is in the tray menu.
+            WindowEvent::CloseRequested { api, .. } => {
                 api.prevent_close();
-                hide_window(window.app_handle());
+                flyout::hide(window.app_handle());
             }
+            _ => {}
         })
         .run(tauri::generate_context!())
         .expect("failed to start Portlens");

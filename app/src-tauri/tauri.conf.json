@@ -14,11 +14,15 @@
       {
         "label": "main",
         "title": "Portlens",
-        "width": 1120,
-        "height": 740,
-        "minWidth": 820,
-        "minHeight": 520,
-        "center": true
+        "width": 400,
+        "height": 660,
+        "decorations": false,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "skipTaskbar": true,
+        "visible": false,
+        "shadow": true
       }
     ],
     "security": {

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What the main window may do. App commands are always callable; nothing else is granted.",
+  "description": "What the main window may do. App commands are always callable; only listening for events is granted on top.",
   "windows": ["main"],
-  "permissions": ["core:event:default", "window-state:default"]
+  "permissions": ["core:event:default"]
 }
