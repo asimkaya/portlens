@@ -1,0 +1,73 @@
+/* Colours are named after the harbour they come from. Text colours are picked
+   to keep at least 4.5:1 against the surface they sit on, in both themes. */
+:root {
+  color-scheme: light;
+
+  --bg: #e8f2f0;
+  --surface: #ffffff;
+  --surface-2: #f2f8f7;
+  --track: #dbe9e7;
+  --line: #d8e6e4;
+  --line-strong: #bdd3d0;
+
+  --ink: #12353b;
+  --ink-2: #48676c;
+  --ink-3: #5f7d82;
+
+  --accent: #0e7c7a;
+  --accent-fill: #0f8582;
+  --accent-soft: #d3efec;
+  --on-accent: #ffffff;
+
+  --buoy: #ffb547;
+  --buoy-soft: #ffeecb;
+  --buoy-ink: #84500a;
+
+  --signal: #c93a31;
+  --signal-fill: #d4443b;
+  --signal-soft: #fde5e2;
+
+  --shadow-raised: 0 1px 2px rgb(18 53 59 / 0.08), 0 8px 24px rgb(18 53 59 / 0.1);
+  --shadow-float: 0 2px 6px rgb(18 53 59 / 0.1), 0 24px 64px rgb(18 53 59 / 0.22);
+
+  --radius-s: 8px;
+  --radius-m: 11px;
+  --radius-l: 18px;
+
+  --font-ui: "Figtree Variable", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque Variable", "Figtree Variable", "Segoe UI", sans-serif;
+  --font-mono: "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --bg: #0b1c20;
+    --surface: #12292f;
+    --surface-2: #17323a;
+    --track: #1b3a42;
+    --line: #21404a;
+    --line-strong: #2f5560;
+
+    --ink: #e3f3f0;
+    --ink-2: #a3c1c0;
+    --ink-3: #82a3a4;
+
+    --accent: #46d6cf;
+    --accent-fill: #2bbdb7;
+    --accent-soft: #14423f;
+    --on-accent: #042326;
+
+    --buoy: #ffb547;
+    --buoy-soft: #3b2e12;
+    --buoy-ink: #ffc96e;
+
+    --signal: #ff8077;
+    --signal-fill: #d4443b;
+    --signal-soft: #432220;
+
+    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.3);
+    --shadow-float: 0 2px 6px rgb(0 0 0 / 0.4), 0 24px 64px rgb(0 0 0 / 0.55);
+  }
+}
