@@ -1,0 +1,17 @@
+[package]
+name = "portlens-cli"
+description = "Command line front end for Portlens."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "portlens"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+portlens-core = { path = "../portlens-core" }
+serde_json = "1"
